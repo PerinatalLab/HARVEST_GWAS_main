@@ -1,13 +1,13 @@
 #!/usr/bin/Rscript
 
-# USAGE: ./run_survival_fetal.R NUMDIR
+# USAGE: ./run_survival_fetal.R NUMDIR PHENODIR
 # where NUMDIR is directory suffix for parallelizing
 
 library(GenABEL)
 
 args = commandArgs(TRUE)
 #Survival data in the Survival data folder
-pathpheno<-"/media/local-disk2/jjuod/probabel/phenofilesX"
+pathpheno<-paste0("/media/local-disk2/jjuod/probabel/", args[2])
 #Genotype in the imputvcf folder
 pathgeno<-paste("/media/local-disk2/jjuod/probabel/fetalfiles", args[1], sep="")
  
