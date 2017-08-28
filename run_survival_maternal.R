@@ -1,15 +1,15 @@
 #!/usr/bin/Rscript
 
-# USAGE: ./run_survival_maternal.R NUMDIR
+# USAGE: ./run_survival_maternal.R NUMDIR PHENODIR
 # where NUMDIR is directory suffix for parallelizing
 
 library(GenABEL)
 
 args = commandArgs(TRUE)
 #Survival data in the Survival data folder
-pathpheno<-"/media/local-disk2/jjuod/probabel/phenofiles"
+pathpheno<-paste0("/media/local-disk2/jjuod/probabel/", args[2])
 #Genotype in the imputvcf folder
-pathgeno<-paste("/media/local-disk2/jjuod/probabel/maternalfiles", args[1], sep="")
+pathgeno<-paste0("/media/local-disk2/jjuod/probabel/maternalfiles", args[1])
  
 maternal=TRUE
  
@@ -17,7 +17,7 @@ maternal=TRUE
 if(maternal){
 	#Mom
 	#List of the files names in the pheno path ,starting with M finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.pheno$")
 	#CHR
 	#List of the files names in the pheno path finishing with .mlinfo, unzipped
 	listmlinfo<-list.files(path=pathgeno,pattern = "^m.*mlinfo")
@@ -28,7 +28,7 @@ if(maternal){
 } else {		 
 	#Child
 	#List of the files names in the pheno path ,starting with C finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.pheno$")
 	listfvi<-list.files(path=pathpheno,pattern = "^c.*fvi$")
 	listmlinfo<-list.files(path=pathpheno,pattern = "^c.*mlinfo$")
 	listfvd<-list.files(path=pathpheno,pattern = "^c.*fvd.gz")
@@ -59,7 +59,7 @@ for( i in 1:length(listmlinfo))
 	# ProAbel Cox command, for score test
 	cmdline<-paste("parallel -j ", length(listphenofiles),
 			" ./pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
-			" --info ", mymlinfo, " --out ", myres ,"_{.} < results/phenolist.txt", sep="")
+			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolist.txt", sep="")
 	# System only work with Linux
 	print(cmdline)
 	system(cmdline)

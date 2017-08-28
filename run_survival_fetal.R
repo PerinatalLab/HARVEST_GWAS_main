@@ -59,7 +59,7 @@ for( i in 1:length(listmlinfo))
 	# ProAbel Cox command, for score test
 	cmdline<-paste("parallel -j ", length(listphenofiles),
 			" ./pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
-			" --info ", mymlinfo, " --out ", myres ,"_{.} < results/phenolist.txt", sep="")
+			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolist.txt", sep="")
 	# System only work with Linux
 	print(cmdline)
 	system(cmdline)
