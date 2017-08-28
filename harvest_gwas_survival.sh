@@ -23,10 +23,32 @@ done
 
 
 ### PREPARING PHENOTYPE ###
-prepare_main_phenos.R
+# using the section for survival models:
+prep-phenofile.R
+# copy the generated pheno files to phenofiles/
 
 ### SETTING UP FOLDERS ###
+# all genotype files are then distributed to a number of folders
+# for easy parallelization:
+for c in {1..22}
+do
+	dest=$((chr % 6))
+	mkdir -p maternalfiles${dest}
+	mkdir -p fetalfiles${dest}
+	cp moms_${c}.* maternalfiles${dest}/
+	cp fets_${c}.* fetalfiles${dest}/
+done
+mkdir -p maternalfiles6/
+mkdir -p fetalfiles6/
+# fetal X will need separate pheno files:
+cp fets_X.* fetalfiles6/
+# move chunked chrs as well:
+cp moms_X.* maternalfiles6/
+cp moms_2_*.* maternalfiles6/
+cp moms_16_*.* maternalfiles6/
+
 
 ### MAIN GWAS RUN ###
-
-
+seq 0 6 | parallel -j 7 ./run_survival_maternal.R {}
+seq 0 5 | parallel -j 6 ./run_survival_fetal.R {}
+./run_survival_fetal_x.R 6
