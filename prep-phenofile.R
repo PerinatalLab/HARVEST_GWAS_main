@@ -16,16 +16,16 @@ attachPheno = function(phenodf){
 	print(sprintf("%i individuals with phenotype info found", nrow(linkm)))
 }
 
-# Usage: getCore()
-getCore = function(){
+# Usage: getCore(linkm)
+getCore = function(pheno){
 	coremoms <<- filter(flags, genotypesOK, phenotypesOK, coreOK) %>%
-		semi_join(linkm, ., by=c("SentrixID_1"="IID")) %>%
+		semi_join(pheno, ., by=c("SentrixID_1"="IID")) %>%
 		filter(Role=="Mother")
 	# 7065, incl. multiple pregs
 	print(sprintf("%i core mothers found", nrow(coremoms)))
 	
 	corekids <<- filter(flags, genotypesOK, phenotypesOK, coreOK) %>%
-		semi_join(linkm, ., by=c("SentrixID_1"="IID")) %>%
+		semi_join(pheno, ., by=c("SentrixID_1"="IID")) %>%
 		filter(Role=="Child")
 	print(sprintf("%i core kids found", nrow(corekids)))
 }
@@ -48,18 +48,15 @@ removeRepeated = function(dftoclean, basedon){
 		mutate(BATCH = as.numeric(BATCH=="M24"))
 }
 
-# Usage: makeOutputs moms_height.txt AA87 moms
-makeOutputs = function(phenofile, phenoname, dataset){
-	corepaired = corepaired[,c("PREG_ID_1724", "SentrixID_1", phenoname, "BATCH")]
-
+# Usage: attachCovariates AA87 moms 6
+attachCovariates = function(phenoname, dataset, numPCs){
+	# read in correct ibd-exclusion list and pca-covar file
 	if(dataset=="moms"){
 		ibd = read.table(paste0(harvdir, "ibd_pihat_exclude_mothers"))
 		pcs = read.table(paste0(harvdir, "plink_covar_mothers"))
-		samplelist = paste0(harvdir, "allmoms.txt")
-	} else if (dataset=="kids") {
+	} else if (dataset=="fets") {
 		ibd = read.table(paste0(harvdir, "ibd_pihat_exclude_offspring"))
 		pcs = read.table(paste0(harvdir, "plink_covar_offspring"))
-		samplelist = paste0(harvdir, "allkids.txt")
 	} else {
 		return()
 	}
@@ -67,11 +64,22 @@ makeOutputs = function(phenofile, phenoname, dataset){
 	colnames(ibd) = c("FID1", "IID1", "IID2", "PIHAT")
 	colnames(pcs)[1:2] = c("FID", "SentrixID_1")
 	
-	print(head(corepaired))
-	corepaired = inner_join(corepaired, pcs[,2:5], by="SentrixID_1") %>%
-		anti_join(ibd, by=c("PREG_ID_1724"="FID1", "SentrixID_1"="IID1"))
-	
+	corepaired <<- inner_join(corepaired, pcs[,2:(numPCs+2)], by="SentrixID_1") %>%
+		anti_join(ibd, by=c("SentrixID_1"="IID1"))
 	print(sprintf("after attaching covariates, %i remain", nrow(corepaired)))
+}
+
+
+# For SNPTEST
+# Usage: makeOutputs moms_height.txt AA87 moms
+makeOutputs = function(phenofile, phenoname, dataset){
+	if(dataset=="moms"){
+		samplelist = paste0(harvdir, "allmoms.txt")
+	} else if (dataset=="fets"){
+		samplelist = paste0(harvdir, "allfets.txt")
+	} else {
+		return()
+	}
 	write.table(corepaired, col.names=T, row.names=F, quote=F,
 				file=paste0("~/Documents/harvest/phenofiles/", phenofile, ".txt"))
 	
@@ -92,13 +100,45 @@ makeOutputs = function(phenofile, phenoname, dataset){
 	# make snptest command
 	outfile = paste0("results/", dataset, "_", phenoname)
 	snptestcall = paste0("./snptest_v2.5.2 ",
-		 "-data ../merging/", dataset, "_{}.vcf.gz ", phenofile, ".pheno -pheno ", phenoname,
-		 " -use_raw_phenotypes -cov_all -genotype_field GP -method expected ",
-		 "-frequentist 1 -o ", outfile, "_{}.txt &> ", outfile, "_{}.log")
+						 "-data ../merging/", dataset, "_{}.vcf.gz ", phenofile, ".pheno -pheno ", phenoname,
+						 " -use_raw_phenotypes -cov_all -genotype_field GP -method expected ",
+						 "-frequentist 1 -o ", outfile, "_{}.txt &> ", outfile, "_{}.log")
 	cmd = paste("seq 22 -1 1 | parallel -j $1 '", snptestcall, "'")
 	cmdX = paste("echo 'X' | parallel -j 1 '", snptestcall, "'")
 	writeChar(c("#!/bin/bash", cmd, cmdX),
 			  paste0("~/Documents/harvest/snptest_", phenoname, ".sh"), eos = "\n")
+}
+
+
+# For ProbABEL
+# Usage: makeOutputs MotherSurvPheno moms
+makeOutputsSurv = function(phenofile, dataset){
+	samplelist = read.table(paste0(harvdir, "all", dataset, ".txt"), h=F)
+	
+	samplelist = left_join(samplelist, corepaired, by=c("V1"="SentrixID_1"))
+	print(table(samplelist[,3], deparse.level = 2, useNA="i"))
+	
+	colnames(samplelist)[1] = "id"
+	write.table(samplelist, col.names=T, row.names=F, quote=F,
+				file=paste0("~/Documents/harvest/phenofiles/", phenofile, ".txt"))
+	
+	# make IDs match probABEL's fvds:
+	samplelist$id = 1:nrow(samplelist)
+	write.table(samplelist, col.names=T, row.names=F, quote=F,
+				file=paste0("~/Documents/harvest/phenofiles/", phenofile, ".pheno"))
+	
+	if(dataset=="fets"){
+		samplelistx = read.table(paste0(harvdir, "allfetsx.txt"), h=F)
+		samplelistx = left_join(samplelistx, corepaired, by=c("V1"="SentrixID_1"))
+		
+		colnames(samplelistx)[1] = "id"
+		samplelistx$id = 1:nrow(samplelistx)
+		write.table(samplelistx, col.names=T, row.names=F, quote=F,
+					file=paste0("~/Documents/harvest/phenofiles/", phenofile, "X.pheno"))
+	}	
+	
+	print("final pheno file is:")
+	nr = system(paste0("wc -l ~/Documents/harvest/phenofiles/", phenofile, ".pheno"))
 }
 
 ################# PHENOTYPE-SPECIFIC PARTS ###################
@@ -120,8 +160,6 @@ final = filter(m, FLERFODSEL==0,
 			   is.na(DIABETES_MELLITUS),
 			   HYPERTENSIV_TILSTAND==0 & HYPERTENSJON_KRONISK==0,
 			   C00_MALF_ALL==0)
-nrow(final)
-
 final = filter(final, SVLEN_UL_DG<308)
 nrow(final) # 8201
 
@@ -141,8 +179,10 @@ final = filter(final, SVLEN_UL_DG<308)
 nrow(final) # 10909
 
 attachPheno(final)
-getCore()
+getCore(linkm)
 removeRepeated(coremoms, corekids)
+corepaired <<- corepaired[,c("PREG_ID_1724", "SentrixID_1", "SVLEN_UL_DG", "BATCH")]
+attachCovariates("SVLEN_UL_DG", "moms", 3)
 makeOutputs("moms_dirty", "SVLEN_UL_DG", "moms") # 8879
 
 
@@ -154,6 +194,60 @@ qplot(q1$AA87)
 nrow(q1)
 
 attachPheno(q1)
-getCore()
+getCore(linkm)
 removeRepeated(coremoms, corekids)
+corepaired <<- corepaired[,c("PREG_ID_1724", "SentrixID_1", "AA87", "BATCH")]
+attachCovariates("AA87", "moms", 3)
 makeOutputs("moms_height", "AA87", "moms")
+
+
+### GA SURVIVAL
+m = read.table("~/data/mobaqs/p1724/harvest_mfr.csv", sep=";", h=T)
+dim(m)
+final = filter(m, FLERFODSEL==0,
+			   DODKAT<6 | DODKAT>10,
+			   !is.na(SVLEN_DG))
+final = filter(final, SVLEN_DG<308) %>%
+	mutate(GAcor = SVLEN_DG-154)
+nrow(final)
+
+
+## SPONT MAIN
+phenospon = final
+attachPheno(phenospon)
+getCore(linkm)
+removeRepeated(coremoms, corekids)
+corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "BATCH")]
+attachCovariates("GAcor", "moms", 6) # 9196
+makeOutputsSurv("MotherPhenoSpon", "moms")
+
+## PROM MAIN
+removeRepeated(coremoms, corekids)
+corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "BATCH")]
+attachCovariates("GAcor", "moms", 6) # 9196
+makeOutputsSurv("MotherPhenoProm", "moms")
+
+
+## SPONT SENS
+phenosens = filter(final,
+			   FSTART==1 & (is.na(KSNITT) | KSNITT>1),
+			   is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==2,
+			   INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+			   	INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0,
+			   DODKAT<6 | DODKAT>10,
+			   ABRUPTIOP==0,
+			   PLACENTA_PREVIA==0,
+			   PREEKL_EKLAMPSI==0,
+			   FOSTERV_POLYHYDRAMNION==0,
+			   is.na(DIABETES_MELLITUS),
+			   HYPERTENSIV_TILSTAND==0 & HYPERTENSJON_KRONISK==0,
+			   C00_MALF_ALL==0)
+nrow(phenospon)
+
+
+
