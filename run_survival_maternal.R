@@ -17,7 +17,7 @@ maternal=TRUE
 if(maternal){
 	#Mom
 	#List of the files names in the pheno path ,starting with M finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.pheno$")
 	#CHR
 	#List of the files names in the pheno path finishing with .mlinfo, unzipped
 	listmlinfo<-list.files(path=pathgeno,pattern = "^m.*mlinfo")
@@ -28,7 +28,7 @@ if(maternal){
 } else {		 
 	#Child
 	#List of the files names in the pheno path ,starting with C finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.pheno$")
 	listfvi<-list.files(path=pathpheno,pattern = "^c.*fvi$")
 	listmlinfo<-list.files(path=pathpheno,pattern = "^c.*mlinfo$")
 	listfvd<-list.files(path=pathpheno,pattern = "^c.*fvd.gz")
@@ -50,16 +50,16 @@ for( i in 1:length(listmlinfo))
 		gsub(pattern=".dose.fvd.gz",replacement="",listfvd[i]), sep ="_")
  
 	# unzip:
-	print(paste("Unzipping ",genofile,sep=" "))
-	cmdline<-paste("gunzip -k",genofile,sep = " ")
+	print(paste("Unzipping",genofile))
+	cmdline<-paste("gunzip -k",genofile)
 	print(cmdline)
 	system(cmdline)
  
 	# run analysis:
 	# ProAbel Cox command, for score test
 	cmdline<-paste("parallel -j ", length(listphenofiles),
-			" ./pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
-			" --info ", mymlinfo, " --out ", myres ,"_{.} < results/phenolist.txt", sep="")
+			" ./bin/pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
+			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolist.txt", sep="")
 	# System only work with Linux
 	print(cmdline)
 	system(cmdline)
