@@ -50,15 +50,15 @@ for( i in 1:length(listmlinfo))
 		gsub(pattern=".dose.fvd.gz",replacement="",listfvd[i]), sep ="_")
  
 	# unzip:
-	print(paste("Unzipping ",genofile,sep=" "))
-	cmdline<-paste("gunzip -k",genofile,sep = " ")
+	print(paste("Unzipping",genofile))
+	cmdline<-paste("gunzip -k",genofile)
 	print(cmdline)
 	system(cmdline)
  
 	# run analysis:
 	# ProAbel Cox command, for score test
 	cmdline<-paste("parallel -j ", length(listphenofiles),
-			" ./pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
+			" ./bin/pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
 			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolist.txt", sep="")
 	# System only work with Linux
 	print(cmdline)

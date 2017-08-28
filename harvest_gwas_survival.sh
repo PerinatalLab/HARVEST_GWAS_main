@@ -27,6 +27,7 @@ done
 prep-phenofile.R
 # copy the generated pheno files to phenofiles/
 
+
 ### SETTING UP FOLDERS ###
 # all genotype files are then distributed to a number of folders
 # for easy parallelization:
@@ -41,6 +42,7 @@ done
 mkdir -p maternalfiles6/
 mkdir -p fetalfiles6/
 # fetal X will need separate pheno files:
+# (not maternal, because their samples for auto and X are same)
 cp fets_X.* fetalfiles6/
 # move chunked chrs as well:
 cp moms_X.* maternalfiles6/
@@ -50,5 +52,5 @@ cp moms_16_*.* maternalfiles6/
 
 ### MAIN GWAS RUN ###
 seq 0 6 | parallel -j 7 ./run_survival_maternal.R {}
-seq 0 5 | parallel -j 6 ./run_survival_fetal.R {}
-./run_survival_fetal_x.R 6
+seq 0 5 | parallel -j 6 ./run_survival_fetal.R {} phenofiles
+./run_survival_fetal.R 6 phenofilesX
