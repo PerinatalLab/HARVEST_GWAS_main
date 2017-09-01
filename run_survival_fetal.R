@@ -17,7 +17,7 @@ maternal=FALSE
 if(maternal){
 	#Mom
 	#List of the files names in the pheno path ,starting with M finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^M.*.pheno$")
 	#CHR
 	#List of the files names in the pheno path finishing with .mlinfo, unzipped
 	listmlinfo<-list.files(path=pathgeno,pattern = "^m.*mlinfo")
@@ -28,12 +28,12 @@ if(maternal){
 } else {		 
 	#Child
 	#List of the files names in the pheno path ,starting with C finishing with .txt
-	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.txt$")
+	listphenofiles<-list.files(path=pathpheno,pattern = "^C.*.pheno$")
 	listmlinfo<-list.files(path=pathgeno,pattern = "^f.*mlinfo$")
 	listfvi<-list.files(path=pathgeno,pattern = "^f.*fvi$")
 	listfvd<-list.files(path=pathgeno,pattern = "^f.*fvd.gz")
 }
-write(listphenofiles, file="/media/local-disk2/jjuod/probabel/results/phenolist.txt")
+write(listphenofiles, file="/media/local-disk2/jjuod/probabel/results/phenolistf.txt")
  
 # Need to have the same order in listfvd, listfvi and listmlinfo
 listmlinfo<-sort(listmlinfo)
@@ -59,7 +59,7 @@ for( i in 1:length(listmlinfo))
 	# ProAbel Cox command, for score test
 	cmdline<-paste("parallel -j ", length(listphenofiles),
 			" ./bin/pacoxph --pheno ", pathpheno, "/{} --dose ", myfvi,
-			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolist.txt", sep="")
+			" --info ", mymlinfo, " --out ", myres ,"_{.} < ../results/phenolistf.txt", sep="")
 	# System only work with Linux
 	print(cmdline)
 	system(cmdline)
