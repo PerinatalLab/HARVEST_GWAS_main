@@ -209,6 +209,7 @@ final = filter(m, FLERFODSEL==0,
 			   !is.na(SVLEN_DG))
 final = filter(final, SVLEN_DG<308) %>%
 	mutate(GAcor = SVLEN_DG-154)
+final = mutate(final, PARITY0 = as.numeric(PARITET_5==0))
 nrow(final)
 
 
@@ -216,30 +217,43 @@ nrow(final)
 phenospon = final
 attachPheno(phenospon)
 getCore(linkm)
+# maternal
 removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
 						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
 						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
 						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "BATCH")]
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
 attachCovariates("GAcor", "moms", 6) # 9196
 makeOutputsSurv("MotherPhenoSpon", "moms")
+# fetal
+removeRepeated(corekids, coremoms)
+corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "fets", 6) # 9553
+makeOutputsSurv("ChildPhenoSpon", "fets")
 
 ## PROM MAIN
+# maternal
 removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "BATCH")]
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
 attachCovariates("GAcor", "moms", 6) # 9196
 makeOutputsSurv("MotherPhenoProm", "moms")
+# fetal
+removeRepeated(corekids, coremoms)
+corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "fets", 6) # 9553
+makeOutputsSurv("ChildPhenoProm", "fets")
 
 
 ## SPONT SENS
 phenosens = filter(final,
-			   FSTART==1 & (is.na(KSNITT) | KSNITT>1),
-			   is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==2,
-			   INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
-			   	INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0,
-			   DODKAT<6 | DODKAT>10,
+			   is.na(IVF),
 			   ABRUPTIOP==0,
 			   PLACENTA_PREVIA==0,
 			   PREEKL_EKLAMPSI==0,
@@ -247,7 +261,40 @@ phenosens = filter(final,
 			   is.na(DIABETES_MELLITUS),
 			   HYPERTENSIV_TILSTAND==0 & HYPERTENSJON_KRONISK==0,
 			   C00_MALF_ALL==0)
-nrow(phenospon)
+nrow(phenosens)
+attachPheno(phenosens)
+getCore(linkm)
 
+# maternal
+removeRepeated(coremoms, corekids)
+corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "moms", 6) # 8006
+makeOutputsSurv("MotherSensSpon", "moms")
+# fetal
+removeRepeated(corekids, coremoms)
+corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "fets", 6) # 8304
+makeOutputsSurv("ChildSensSpon", "fets")
 
+## PROM SENS
+# maternal
+removeRepeated(coremoms, corekids)
+corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "moms", 6) # 8006
+makeOutputsSurv("MotherSensProm", "moms")
+# fetal
+removeRepeated(corekids, coremoms)
+corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "fets", 6) # 8304
+makeOutputsSurv("ChildSensProm", "fets")
 
