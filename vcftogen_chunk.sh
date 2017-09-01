@@ -34,7 +34,7 @@ echo "rsid REF/EffAl ALT/NonEffAl POS AC INFO Rsq" > maternalfiles7/moms_2_a.mli
 awk -v l=1 -v r=${posstart} '$4>=l && $4<=r' BKP_maternal/moms_2.mlinfo >> maternalfiles7/moms_2_a.mlinfo
 echo "preparations for chr 2a complete"
 
-./gentofvi.R maternalfiles7/moms_2_b.gen BKP_maternal/moms_2_catids.sample maternalfiles7/moms_2_b
+./gentofvi.R maternalfiles7/moms_2_a.gen BKP_maternal/moms_2_catids.sample maternalfiles7/moms_2_a
 echo "fvd file created for moms, chunk 2a"
 
 ### 2b
