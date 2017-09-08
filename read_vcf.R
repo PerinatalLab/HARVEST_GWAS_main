@@ -1,9 +1,16 @@
 options(stringsAsFactors = F)
 library(tidyr)
 library(dplyr)
-readVcf = function(chr, pos, pheno, genome){
+readVcf = function(chr, pos, pheno, genome, project="H"){
 	# determine the source vcf file
-	vcf = paste0("/mnt/HUNT/merging/", genome, "_", chr, ".vcf.gz")
+	if(project == "H"){
+		vcf = paste0("/mnt/HUNT/merging/", genome, "_", chr, ".vcf.gz")
+	} else if (project == "M"){
+		vcf = paste0("~/data/geno/imputed/fresh/", chr, ".vcf.gz")
+	} else {
+		print("Please select project, either H (HARVEST) or M (MoBa08)")
+		return()
+	}
 	
 	# extract the snp
 	header = scan(pipe(paste("bcftools query -l", vcf)), what="character")
@@ -24,7 +31,7 @@ readVcf = function(chr, pos, pheno, genome){
 	
 	# attach phenotypes
 	geno$IID = header
-	geno = inner_join(geno, pheno, by=c("IID"="SentrixID_1"))
+	geno = inner_join(geno, pheno, by=c("IID"="id"))
 	
 	return(geno)
 }
