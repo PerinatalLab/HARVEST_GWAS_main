@@ -34,22 +34,23 @@ getCore = function(pheno){
 # keeping the one included in the other core set.
 # Usage: removeRepeated(coremoms, corekids) to clean mothers
 # 		removeRepeated(corekids, coremoms) to clean kids
+#			- obviously not needed, because kids don't have multiple MFR rows
 removeRepeated = function(dftoclean, basedon){
 	corepaired = group_by(dftoclean, SentrixID_1) %>%
 		mutate(hasPair = PREG_ID_1724 %in% basedon$PREG_ID_1724) %>%
 		top_n(1, hasPair) %>%
 		filter(rank(PREG_ID_1724)==1)
-	# 6836, no more multiple pregs
 	print(sprintf("after removing repeated pregnancies, %i remain", nrow(corepaired)))
-	
-	## add batch covariate
-	corepaired <<- select(flags, one_of(c("IID", "BATCH"))) %>%
-		left_join(corepaired, ., by=c("SentrixID_1" = "IID")) %>%
-		mutate(BATCH = as.numeric(BATCH=="M24"))
+	return(corepaired)
 }
 
 # Usage: attachCovariates AA87 moms 6
-attachCovariates = function(phenoname, dataset, numPCs){
+attachCovariates = function(corepaired, phenoname, dataset, numPCs){
+	## add batch covariate
+	corepaired = select(flags, one_of(c("IID", "BATCH"))) %>%
+		left_join(corepaired, ., by=c("SentrixID_1" = "IID")) %>%
+		mutate(BATCH = as.numeric(BATCH=="M24"))
+	
 	# read in correct ibd-exclusion list and pca-covar file
 	if(dataset=="moms"){
 		ibd = read.table(paste0(harvdir, "ibd_pihat_exclude_mothers"))
@@ -64,15 +65,16 @@ attachCovariates = function(phenoname, dataset, numPCs){
 	colnames(ibd) = c("FID1", "IID1", "IID2", "PIHAT")
 	colnames(pcs)[1:2] = c("FID", "SentrixID_1")
 	
-	corepaired <<- inner_join(corepaired, pcs[,2:(numPCs+2)], by="SentrixID_1") %>%
+	corepaired = inner_join(corepaired, pcs[,2:(numPCs+2)], by="SentrixID_1") %>%
 		anti_join(ibd, by=c("SentrixID_1"="IID1"))
 	print(sprintf("after attaching covariates, %i remain", nrow(corepaired)))
+	return(corepaired)
 }
 
 
 # For SNPTEST
 # Usage: makeOutputs moms_height.txt AA87 moms
-makeOutputs = function(phenofile, phenoname, dataset){
+makeOutputs = function(corepaired, phenofile, phenoname, dataset){
 	if(dataset=="moms"){
 		samplelist = paste0(harvdir, "allmoms.txt")
 	} else if (dataset=="fets"){
@@ -112,7 +114,7 @@ makeOutputs = function(phenofile, phenoname, dataset){
 
 # For ProbABEL
 # Usage: makeOutputs MotherSurvPheno moms
-makeOutputsSurv = function(phenofile, dataset){
+makeOutputsSurv = function(corepaired, phenofile, dataset){
 	samplelist = read.table(paste0(harvdir, "all", dataset, ".txt"), h=F)
 	
 	samplelist = left_join(samplelist, corepaired, by=c("V1"="SentrixID_1"))
@@ -201,7 +203,8 @@ attachCovariates("AA87", "moms", 3)
 makeOutputs("moms_height", "AA87", "moms")
 
 
-### GA SURVIVAL
+###### GA SURVIVAL ######
+
 m = read.table("~/data/mobaqs/p1724/harvest_mfr.csv", sep=";", h=T)
 dim(m)
 final = filter(m, FLERFODSEL==0,
@@ -218,37 +221,37 @@ phenospon = final
 attachPheno(phenospon)
 getCore(linkm)
 # maternal
-removeRepeated(coremoms, corekids)
+corepaired = removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
 						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
 						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
 						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "moms", 6) # 9196
-makeOutputsSurv("MotherPhenoSpon", "moms")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "moms", 6) # 9196
+makeOutputsSurv(corepaired, "MotherPhenoSpon", "moms")
 # fetal
-removeRepeated(corekids, coremoms)
+corepaired = corekids
 corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
 						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
 						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
 						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "fets", 6) # 9553
-makeOutputsSurv("ChildPhenoSpon", "fets")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "fets", 6) # 9553
+makeOutputsSurv(corepaired, "ChildPhenoSpon", "fets")
 
 ## PROM MAIN
 # maternal
-removeRepeated(coremoms, corekids)
+corepaired = removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "moms", 6) # 9196
-makeOutputsSurv("MotherPhenoProm", "moms")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "moms", 6) # 9196
+corepaired = makeOutputsSurv(corepaired, "MotherPhenoProm", "moms")
 # fetal
-removeRepeated(corekids, coremoms)
+corepaired = corekids
 corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "fets", 6) # 9553
-makeOutputsSurv("ChildPhenoProm", "fets")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "fets", 6) # 9553
+corepaired = makeOutputsSurv(corepaired, "ChildPhenoProm", "fets")
 
 
 ## SPONT SENS
@@ -266,35 +269,64 @@ attachPheno(phenosens)
 getCore(linkm)
 
 # maternal
-removeRepeated(coremoms, corekids)
+corepaired = removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
 						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
 						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
 						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "moms", 6) # 8006
-makeOutputsSurv("MotherSensSpon", "moms")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "moms", 6) # 8006
+corepaired = makeOutputsSurv(corepaired, "MotherSensSpon", "moms")
 # fetal
-removeRepeated(corekids, coremoms)
+corepaired = removeRepeated(corekids, coremoms)
 corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
 						(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
 						INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
 						INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "fets", 6) # 8304
-makeOutputsSurv("ChildSensSpon", "fets")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "fets", 6) # 8304
+corepaired = makeOutputsSurv(corepaired, "ChildSensSpon", "fets")
 
 ## PROM SENS
 # maternal
-removeRepeated(coremoms, corekids)
+corepaired = removeRepeated(coremoms, corekids)
 corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "moms", 6) # 8006
-makeOutputsSurv("MotherSensProm", "moms")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "moms", 6) # 8006
+corepaired = makeOutputsSurv(corepaired, "MotherSensProm", "moms")
 # fetal
-removeRepeated(corekids, coremoms)
+corepaired = removeRepeated(corekids, coremoms)
 corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)))
-corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "BATCH")]
-attachCovariates("GAcor", "fets", 6) # 8304
-makeOutputsSurv("ChildSensProm", "fets")
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0")]
+corepaired = attachCovariates(corepaired, "GAcor", "fets", 6) # 8304
+corepaired = makeOutputsSurv(corepaired, "ChildSensProm", "fets")
 
+
+################# CONDITIONAL ANALYSES ###################
+source("~/Documents/gitrep/HARVEST_GWAS_main/read_vcf.R")
+## SPONT
+phenosens = filter(final,
+				   is.na(IVF),
+				   ABRUPTIOP==0,
+				   PLACENTA_PREVIA==0,
+				   PREEKL_EKLAMPSI==0,
+				   FOSTERV_POLYHYDRAMNION==0,
+				   is.na(DIABETES_MELLITUS),
+				   HYPERTENSIV_TILSTAND==0 & HYPERTENSJON_KRONISK==0,
+				   C00_MALF_ALL==0)
+nrow(phenosens)
+attachPheno(phenosens)
+getCore(linkm)
+
+# maternal
+removeRepeated(coremoms, corekids)
+corepaired = mutate(corepaired, Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+							(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+							INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+							INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+corepaired = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "BATCH")]
+attachCovariates("GAcor", "moms", 6) # 8006
+makeOutputsSurv("MotherSensSpon", "moms")
+
+
+readVcf(chrToConditionOn, posToConditionOn, NA, genomeToConditionOn)
