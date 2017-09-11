@@ -1,7 +1,7 @@
 options(stringsAsFactors = F)
 library(tidyr)
 library(dplyr)
-readVcf = function(chr, pos, pheno, genome, project="H"){
+readVcf = function(chr, pos, pheno=NA, genome, project="H"){
 	# determine the source vcf file
 	if(project == "H"){
 		vcf = paste0("/mnt/HUNT/merging/", genome, "_", chr, ".vcf.gz")
@@ -15,7 +15,6 @@ readVcf = function(chr, pos, pheno, genome, project="H"){
 	# extract the snp
 	header = scan(pipe(paste("bcftools query -l", vcf)), what="character")
 	raw = read.table(pipe(paste0("bcftools view -r ", chr, ":", pos, " ", vcf)))
-	pheno = read.table(pheno, h=T)
 	
 	# transform the geno file
 	geno = raw[,-(1:9)]
@@ -29,9 +28,15 @@ readVcf = function(chr, pos, pheno, genome, project="H"){
 	geno$AB = as.numeric(geno$AB)
 	geno$BB = as.numeric(geno$BB)
 	
-	# attach phenotypes
 	geno$IID = header
-	geno = inner_join(geno, pheno, by=c("IID"="id"))
+	# attach phenotypes
+	if(!is.na(pheno)){
+		print("Attaching phenotype file")
+		pheno = read.table(pheno, h=T)
+		geno = inner_join(geno, pheno, by=c("IID"="id"))
+	} else {
+		print("Phenotype file not requested, returning genotypes only.")
+	}
 	
 	return(geno)
 }
