@@ -14,7 +14,7 @@ do
 	echo "Working on file ${file}"
 	
 	# trim filename to get only the number	
-	num=${file%%.pheno}
+	num=${file%%.txt}
 	num=${num##*Prom}
 	num=${num##*Spon}
 	if [[ $file == *"Mother"* ]]
@@ -28,9 +28,10 @@ do
 
 	# check 3rd column for Prom/Spon
 	pheno=$(awk 'NR==1{print tolower($3)}' $file)
+	echo "Working on phenotype ${pheno}"
 
 	# check 4th position to identify region
-	pos=( $(awk 'NR==1{split($4, a, "_"); print a[2], a[3]}' $file) )
+	pos=( $(awk 'NR==1{split($5, a, "_"); print a[2], a[3]}' $file) )
 	chr=${pos[0]}
 	pstart=$(( ${pos[1]} - $2 ))
 	pstop=$(( ${pos[1]} + $2 ))
@@ -43,16 +44,22 @@ do
 		${RESDIR}/cond/res_${genome}_${pheno}_${num} \
 		${chr}:${pstart}-${pstop}
 	echo "Analysis complete."
+	cp tempfile_0.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_0
+	cp tempfile_1.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_1
 
 	# run PLINK to get regional LD for easier plotting later
 	if [ ! -f ${RESDIR}/cond/ld_${genome}_${num} ]
 	then
 		echo "Generating LD matrix"
 		plink \
-			--vcf tempfile.vcf \
-			--r2 gz \
-			--ld-window 1000 \
-			--out ${RESDIR}/cond/ld_${genome}_${num}
+			--vcf tempfile_0.vcf \
+			--r2 inter-chr gz \
+			--out ${RESDIR}/cond/ld_${genome}_${num}_0
+		echo "Generating LD matrix"
+		plink \
+			--vcf tempfile_1.vcf \
+			--r2 inter-chr gz \
+			--out ${RESDIR}/cond/ld_${genome}_${num}_1
 	else
 		echo "LD matrix already exists."
 	fi
