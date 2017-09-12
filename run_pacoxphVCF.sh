@@ -73,7 +73,7 @@ echo "Calling ProbABEL..."
 	-o $3
 echo "Run complete."
 
-rm tempfile.vcf
+# rm tempfile.vcf
 rm tempfile.mlinfo
 rm tempfile.diff
 

@@ -305,6 +305,68 @@ corepaired = makeOutputsSurv(corepaired, "ChildSensProm", "fets")
 ################# CONDITIONAL ANALYSES ###################
 source("~/Documents/gitrep/HARVEST_GWAS_main/read_vcf.R")
 
+# make id table for conditioning mothers on fetal genome & v.v.
+corepaired = removeRepeated(coremoms, corekids)
+pairtable = full_join(corepaired, corekids, by="PREG_ID_1724")
+pairtable = pairtable[, c("SentrixID_1.x", "SentrixID_1.y")]
+colnames(pairtable) = c("momID", "kidID")
+
+# function for attaching a column with another SNP dosage
+# genomeCov = source of covariate (moms/fets)
+# genomeTest = which will be tested (moms/fets)
+# nr = primary key to identify files
+attachGenotypeCov = function(chr, pos, genomeCov, genomeTest, nr){
+	# select the genome to be tested and attach ID for the other family member
+	if(genomeTest == "moms"){
+		corepaired = removeRepeated(coremoms, corekids)
+		corepaired = left_join(corepaired, pairtable, by=c("SentrixID_1"="momID"))
+	} else {
+		corepaired = corekids
+		corepaired = left_join(corepaired, pairtable, by=c("SentrixID_1"="kidID"))
+	}
+	colnames(corepaired)[ncol(corepaired)] = "relativeID"
+	
+	# read in genotype covariate
+	geno = readVcf(chr, pos, NA, genomeCov)
+	print(qplot(geno$DS))
+	
+	# attach either on same ID or relative ID:
+	# same-genome conditioning
+	if(genomeTest == genomeCov){
+		corepaired = left_join(corepaired, geno, by=c("SentrixID_1"="IID"))	
+	} else {
+	# opposite-genome testing
+		corepaired = left_join(corepaired, geno, by=c("relativeID"="IID"))		
+	}
+	
+	# create event/censoring indicators
+	corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)),
+						Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
+										(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
+										INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
+										INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
+	coreProm = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "DS")]
+	coreSpon = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "DS")]
+	
+	# rename the new covariate to genome_chr_pos
+	colnames(coreProm)[5] = paste(genomeCov, chr, pos, sep="_")
+	colnames(coreSpon)[5] = paste(genomeCov, chr, pos, sep="_")
+	
+	# filter IBD, attach PCs, make BATCH, save output
+	if(condlist$genome[g]=="moms"){
+		coreProm = attachCovariates(coreProm, "GAcor", "moms", 6)
+		coreProm = makeOutputsSurv(coreProm, paste0("MotherCondProm", g), "moms")
+		coreSpon = attachCovariates(coreSpon, "GAcor", "moms", 6)
+		coreSpon = makeOutputsSurv(coreSpon, paste0("MotherCondSpon", g), "moms")
+	} else {
+		coreProm = attachCovariates(coreProm, "GAcor", "fets", 6)
+		coreProm = makeOutputsSurv(coreProm, paste0("ChildCondProm", g), "fets")
+		coreSpon = attachCovariates(coreSpon, "GAcor", "fets", 6)
+		coreSpon = makeOutputsSurv(coreSpon, paste0("ChildCondSpon", g), "fets")
+	}
+}
+
+
 ## now using sens as main analyses
 ## same exclusions for both SPONT and PROM:
 phenosens = filter(final,
@@ -323,56 +385,18 @@ getCore(linkm)
 ## Stepwise approach to identify independent SNPs within locus ("CONDITIONAL")
 
 # prepare pheno files for each genotype
-condlist = data.frame(chr=1, pos=762409, genome="fets")
+condlist = data.frame(chr=c(7, 17, 5, 1, 5, 5, 12, 17, 2),
+					  pos=c(41504539, 13015270, 85356980, 31124134, 88995637, 117758779, 118655019, 13361984, 174560184),
+					  genome=c(rep("moms", 3), rep("fets", 6)))
 
+# generate files
 for(g in seq_along(condlist$pos)){
-	# read in and attach genotype covariate
-	geno = readVcf(condlist$chr[g], condlist$pos[g], NA, condlist$genome[g])
-	if(condlist$genome[g]=="moms"){
-		geno = inner_join(pairtable, geno, by=c("momID"="IID"))[,c("momID", "DS")]
-		corepaired = removeRepeated(coremoms, corekids)
-	} else {
-		geno = inner_join(pairtable, geno, by=c("kidID"="IID"))[,c("kidID", "DS")]	
-		corepaired = corekids
-	}
-	print(qplot(geno$DS))
-	
-	corepaired = left_join(corepaired, geno, by=c("SentrixID_1"="IID"))
-	
-	# create event/censoring indicators
-	corepaired = mutate(corepaired, Prom = as.numeric(!is.na(VANNAVGANG)),
-					  		Spon = as.numeric(FSTART==1 & (is.na(KSNITT) | KSNITT>1) &
-					  		  	(is.na(KSNITT_PLANLAGT) | KSNITT_PLANLAGT==1) & 
-					  		  	INDUKSJON_PROSTAGLANDIN==0 & INDUKSJON_ANNET==0 &
-					  		  	INDUKSJON_OXYTOCIN==0 & INDUKSJON_AMNIOTOMI==0))
-	coreProm = corepaired[,c("SentrixID_1", "GAcor", "Prom", "PARITY0", "DS")]
-	coreSpon = corepaired[,c("SentrixID_1", "GAcor", "Spon", "PARITY0", "DS")]
-	
-	# rename the new covariate to genome_chr_pos
-	colnames(coreSpon)[5] = paste(condlist$genome[g], condlist$chr[g], condlist$pos[g], sep="_")
-	colnames(coreSpon)[5] = paste(condlist$genome[g], condlist$chr[g], condlist$pos[g], sep="_")
-	
-	# filter IBD, attach PCs, make BATCH, save output
-	if(condlist$genome[g]=="moms"){
-		coreProm = attachCovariates(coreProm, "GAcor", "moms", 6)
-		coreProm = makeOutputsSurv(coreProm, paste0("MotherCondProm", g), "moms")
-		coreSpon = attachCovariates(coreSpon, "GAcor", "moms", 6)
-		coreSpon = makeOutputsSurv(coreSpon, paste0("MotherCondSpon", g), "moms")
-	} else {
-		coreProm = attachCovariates(coreProm, "GAcor", "fets", 6)
-		coreProm = makeOutputsSurv(coreProm, paste0("ChildCondProm", g), "fets")
-		coreSpon = attachCovariates(coreSpon, "GAcor", "fets", 6)
-		coreSpon = makeOutputsSurv(coreSpon, paste0("ChildCondSpon", g), "fets")
-	}
+	attachGenotypeCov(condlist$chr[g], condlist$pos[g], condlist$genome[g], condlist$genome[g], g)
 }
 
 
 ## Identifying maternal vs. fetal action of SNPs by conditioning on the opposite genome ("INTERACTION")
 
-# make id table for conditioning mothers on fetal genome & v.v.
-corepaired = removeRepeated(coremoms, corekids)
-pairtable = full_join(corepaired, corekids, by="PREG_ID_1724")
-pairtable = pairtable[, c("SentrixID_1.x", "SentrixID_1.y")]
-colnames(pairtable) = c("momID", "kidID")
+
 
 
