@@ -17,7 +17,7 @@ export PATH=/media/local-disk2/jjuod/erc-genotypes/bin:$PATH
 echo "Checking input..."
 if [ "$#" -ne 4 ]
 then
-	echo "Provided $# parameters instead of 5 or 6."
+	echo "Provided $# parameters instead of 4."
 	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop"
 	exit
 fi
