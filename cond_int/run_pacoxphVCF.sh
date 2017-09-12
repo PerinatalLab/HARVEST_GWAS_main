@@ -8,7 +8,7 @@
 ## For conditioned analysis, just prepare .pheno file with additional SNP column.
 ## TODO: interaction analysis.
 
-## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop [SNPtoconditionon]
+## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile.txt outfile chr:regionstart-regionstop [SNPtoconditionon]
 
 set -e
 
@@ -18,7 +18,7 @@ echo "Checking input..."
 if [ "$#" -ne 5 && "$#" -ne 6 ]
 then
 	echo "Provided $# parameters instead of 5 or 6."
-	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop [SNPtoconditionon]"
+	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile.txt outfile chr:regionstart-regionstop [SNPtoconditionon]"
 	exit
 fi
 

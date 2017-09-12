@@ -9,7 +9,7 @@ set -e
 
 INDIR=/media/local-disk2/jjuod/merging
 RESDIR=/media/local-disk2/jjuod/probabel/results
-for file in $1/.txt
+for file in $1/*.txt
 do
 	echo "Working on file ${file}"
 	
