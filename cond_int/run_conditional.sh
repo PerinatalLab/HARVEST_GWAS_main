@@ -3,12 +3,13 @@
 # This script will launch ./run_pacoxphVCF.sh on provided phenofiles,
 # to allow convenient run of conditional analyses.
 
-# USAGE: ./run_conditional.sh phenodir range
+# USAGE: ./run_conditional.sh phenodir range tmpdir
 
 set -e
 
 INDIR=/media/local-disk2/jjuod/merging
 RESDIR=/media/local-disk2/jjuod/probabel/results
+TMPDIR=$3
 for file in $1/*.txt
 do
 	echo "Working on file ${file}"
@@ -42,22 +43,23 @@ do
 		${INDIR}/${genome}_${chr}.vcf.gz \
 		${file} \
 		${RESDIR}/cond/res_${genome}_${pheno}_${num} \
+		${TMPDIR} \
 		${chr}:${pstart}-${pstop}
 	echo "Analysis complete."
-	cp tempfile_0.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_0
-	cp tempfile_1.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_1
+	cp ${TMPDIR}/tempfile_0.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_0
+	cp ${TMPDIR}/tempfile_1.mlinfo ${RESDIR}/cond/snplist_${genome}_${num}_1
 
 	# run PLINK to get regional LD for easier plotting later
 	if [ ! -f ${RESDIR}/cond/ld_${genome}_${num} ]
 	then
 		echo "Generating LD matrix"
 		plink \
-			--vcf tempfile_0.vcf \
+			--vcf ${TMPDIR}/tempfile_0.vcf \
 			--r2 inter-chr gz \
 			--out ${RESDIR}/cond/ld_${genome}_${num}_0
 		echo "Generating LD matrix"
 		plink \
-			--vcf tempfile_1.vcf \
+			--vcf ${TMPDIR}/tempfile_1.vcf \
 			--r2 inter-chr gz \
 			--out ${RESDIR}/cond/ld_${genome}_${num}_1
 	else

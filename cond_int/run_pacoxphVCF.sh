@@ -8,17 +8,17 @@
 ## For conditioned analysis, just prepare .pheno file with additional SNP column.
 ## TODO: interaction analysis.
 
-## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop
+## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop
 
 set -e
 
 export PATH=/media/local-disk2/jjuod/erc-genotypes/bin:$PATH
 
 echo "Checking input..."
-if [ "$#" -ne 4 ]
+if [ "$#" -ne 5 ]
 then
-	echo "Provided $# parameters instead of 5 or 6."
-	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop"
+	echo "Provided $# parameters instead of 5."
+	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop"
 	exit
 fi
 
@@ -44,8 +44,8 @@ then
 	exit
 fi
 
-chr=${4%%:*}
-posstart=${4#*:}
+chr=${5%%:*}
+posstart=${5#*:}
 posstop=${posstart#*-}
 posstart=${posstart%%-*}
 
@@ -68,27 +68,27 @@ do
 	 echo "Working on chr ${chr}, region ${posstart}-${posstop}"
 	 
 	 echo "Creating .mlinfo file..."
-	 echo "rsid REF/NonEffAl ALT/EffAl POS AC INFO Rsq" > tempfile_${i}.mlinfo
+	 echo "rsid REF/NonEffAl ALT/EffAl POS AC INFO Rsq" > ${4}/tempfile_${i}.mlinfo
 	 bcftools query $1 \
 	 	-f '%ID %REF %ALT %POS %INFO/AC %INFO/INFO 1\n' \
-	 	-r ${chr}:${posstart}-${posstop} >> tempfile_${i}.mlinfo
+	 	-r ${chr}:${posstart}-${posstop} >> ${4}/tempfile_${i}.mlinfo
 	 echo "MLINFO file created."
 	 
 	 echo "Extracting region ${chr}:${posstart}-${posstop} from the VCF file..."
-	 bcftools view $1 -r ${chr}:${posstart}-${posstop} -Ov -o tempfile_${i}.vcf
+	 bcftools view $1 -r ${chr}:${posstart}-${posstop} -Ov -o ${4}/tempfile_${i}.vcf
 	 echo "Region extracted."
 	 
 	 echo "Calling ProbABEL..."
 	 ../bin/pacoxphVCF \
-	 	-d tempfile_${i}.vcf \
-	 	-i tempfile_${i}.mlinfo \
+	 	-d ${4}/tempfile_${i}.vcf \
+	 	-i ${4}/tempfile_${i}.mlinfo \
 	 	-p $2 \
 	 	-o ${3}_${i}
 	 echo "Run complete."
 done
 
 # rm tempfile.vcf
-rm tempfile_0.mlinfo
-rm tempfile_1.mlinfo
-rm tempfile.diff
+# rm tempfile_0.mlinfo
+# rm tempfile_1.mlinfo
+# rm tempfile.diff
 
