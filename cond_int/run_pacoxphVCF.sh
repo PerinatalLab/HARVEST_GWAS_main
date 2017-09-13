@@ -50,7 +50,7 @@ posstop=${posstart#*-}
 posstart=${posstart%%-*}
 
 # temporary hack to split into sub-10k snp chunks:
-posmid=$(( posstart + 1000000 ))
+posmid=$(( posstart + 800000 ))
 bothposstart=($posstart $posmid)
 bothposstop=($posmid $posstop)
 
