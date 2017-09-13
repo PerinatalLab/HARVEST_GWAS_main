@@ -6,7 +6,6 @@
 ## which are created by this script.
 ## Requires bcftools.
 ## For conditioned analysis, just prepare .pheno file with additional SNP column.
-## TODO: interaction analysis.
 
 ## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop
 
@@ -18,7 +17,7 @@ echo "Checking input..."
 if [ "$#" -ne 5 ]
 then
 	echo "Provided $# parameters instead of 5."
-	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop"
+	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop"
 	exit
 fi
 

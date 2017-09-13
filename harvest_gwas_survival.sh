@@ -54,3 +54,17 @@ cp moms_16_*.* maternalfiles6/
 seq 0 6 | parallel -j 7 ./run_survival_maternal.R {}
 seq 0 5 | parallel -j 6 ./run_survival_fetal.R {} phenofiles
 ./run_survival_fetal.R 6 phenofilesX
+
+### CONDITIONAL runs within same genome ###
+# select interesting SNPs at below 1e-5:
+awk '$5>19.51 && $4>=0.01' fets_sensprom_all.txt > filtered/fets_sensprom_suggestive.txt # etc.
+
+# make conditional phenos:
+prep-phenofile.R
+# delete X files
+rm ~/Documents/harvest/phenofiles/*Cond*X.pheno
+# upload to HUNT
+cp ~/Documents/harvest/phenofiles/*Cond*.pheno ...
+
+# run:
+./run_conditional.sh phenofiles_cond 800000 tmp
