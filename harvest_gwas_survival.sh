@@ -67,4 +67,4 @@ rm ~/Documents/harvest/phenofiles/*Cond*X.pheno
 cp ~/Documents/harvest/phenofiles/*Cond*.pheno ...
 
 # run:
-./run_conditional.sh phenofiles_cond 800000 tmp
+./run_conditional.sh phenofiles_cond/loci_table.txt 1000000 tmp
