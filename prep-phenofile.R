@@ -450,7 +450,7 @@ for(l in seq_along(loci$CHR)){
     print(sprintf("working on SNP %i / %i", l, nrow(loci)))
 
     # read in genotype covariate
-    geno = readVcf(loci$CHR[l], loci$POS[l], NA, loci$genome[l])
+    geno = readVcf(loci$CHR[l], loci$POS[l], NA, loci$genome[l])[c("IID", "DS")]
     num = loci$ID[l]
 
     # attach it to moms prom & spon
