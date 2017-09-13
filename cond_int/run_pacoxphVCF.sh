@@ -7,17 +7,19 @@
 ## Requires bcftools.
 ## For conditioned analysis, just prepare .pheno file with additional SNP column.
 
-## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop
+## runid argument allows easy parallelization and reuse of already generated VCFs.
+
+## USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop runid
 
 set -e
 
 export PATH=/media/local-disk2/jjuod/erc-genotypes/bin:$PATH
 
 echo "Checking input..."
-if [ "$#" -ne 5 ]
+if [ "$#" -ne 6 ]
 then
-	echo "Provided $# parameters instead of 5."
-	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile chr:regionstart-regionstop"
+	echo "Provided $# parameters instead of 6."
+	echo "USAGE: ./run_pacoxphVCF.sh infile.vcf.gz phenofile outfile tmpdir chr:regionstart-regionstop runid"
 	exit
 fi
 
@@ -34,8 +36,8 @@ then
 fi
 
 echo "Checking .pheno file..."
-touch tempfile.diff
-diff <(bcftools query -l $1) <(awk 'NR>1{print $1}' $2) > tempfile.diff
+touch ${4}/tempfile_${6}.diff
+diff <(bcftools query -l $1) <(awk 'NR>1{print $1}' $2) > ${4}/tempfile_${6}.diff
 if [ -s "tempfile.diff" ]
 then
 	echo "Error: found mismatches between provided .pheno file and VCF."
@@ -48,46 +50,40 @@ posstart=${5#*:}
 posstop=${posstart#*-}
 posstart=${posstart%%-*}
 
-# temporary hack to split into sub-10k snp chunks:
-posmid=$(( posstart + 800000 ))
-bothposstart=($posstart $posmid)
-bothposstop=($posmid $posstop)
+echo "Checking region size..."
+if [ $((posstop-posstart)) -gt 10000000 ]
+then
+	echo "Error: max allowed region size is 10 Mbp. You requested $((posstop-posstart))."
+	exit
+fi
+echo "Working on chr ${chr}, region ${posstart}-${posstop}"
 
-for i in {0..1}
-do
-	posstart=${bothposstart[$i]}
-	posstop=${bothposstop[$i]}
+if [ -f ${4}/tempfile_${6}.mlinfo ]
+then
+	echo "Found already existing MLINFO file."
+else
+	echo "Creating .mlinfo file..."
+	echo "rsid REF/NonEffAl ALT/EffAl POS AC INFO Rsq" > ${4}/tempfile_${6}.mlinfo
+	bcftools query $1 \
+		-f '%ID %REF %ALT %POS %INFO/AC %INFO/INFO 1\n' \
+		-r ${chr}:${posstart}-${posstop} >> ${4}/tempfile_${6}.mlinfo
+	echo "MLINFO file created."
+fi
 
-	 echo "Checking region size..."
-	 if [ $((posstop-posstart)) -gt 10000000 ]
-	 then
-	 	echo "Error: max allowed region size is 10 Mbp. You requested $((posstop-posstart))."
-	 	exit
-	 fi
-	 echo "Working on chr ${chr}, region ${posstart}-${posstop}"
-	 
-	 echo "Creating .mlinfo file..."
-	 echo "rsid REF/NonEffAl ALT/EffAl POS AC INFO Rsq" > ${4}/tempfile_${i}.mlinfo
-	 bcftools query $1 \
-	 	-f '%ID %REF %ALT %POS %INFO/AC %INFO/INFO 1\n' \
-	 	-r ${chr}:${posstart}-${posstop} >> ${4}/tempfile_${i}.mlinfo
-	 echo "MLINFO file created."
-	 
-	 echo "Extracting region ${chr}:${posstart}-${posstop} from the VCF file..."
-	 bcftools view $1 -r ${chr}:${posstart}-${posstop} -Ov -o ${4}/tempfile_${i}.vcf
-	 echo "Region extracted."
-	 
-	 echo "Calling ProbABEL..."
-	 ../bin/pacoxphVCF \
-	 	-d ${4}/tempfile_${i}.vcf \
-	 	-i ${4}/tempfile_${i}.mlinfo \
-	 	-p $2 \
-	 	-o ${3}_${i}
-	 echo "Run complete."
-done
+if [ -f ${4}/tempfile_${6}.vcf ]
+then
+	echo "Found already existing VCF file."
+else
+	echo "Extracting region ${chr}:${posstart}-${posstop} from the VCF file..."
+	bcftools view $1 -r ${chr}:${posstart}-${posstop} -Ov -o ${4}/tempfile_${6}.vcf
+	echo "Region extracted."
+fi
 
-# rm tempfile.vcf
-# rm tempfile_0.mlinfo
-# rm tempfile_1.mlinfo
-# rm tempfile.diff
+echo "Calling ProbABEL..."
+/media/local-disk2/jjuod/probabel/HARVEST_GWAS_main/bin/pacoxphVCF \
+	-d ${4}/tempfile_${6}.vcf \
+	-i ${4}/tempfile_${6}.mlinfo \
+	-p $2 \
+	-o ${3}_${6}
+echo "Run complete."
 
