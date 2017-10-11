@@ -13,7 +13,9 @@
 
 set -e
 
+# paths for bcftools and pacoxphVCF
 export PATH=/media/local-disk2/jjuod/erc-genotypes/bin:$PATH
+export PATH=/media/local-disk2/jjuod/probabel/HARVEST_GWAS_main/bin:$PATH
 
 echo "Checking input..."
 if [ "$#" -ne 6 ]
@@ -80,7 +82,7 @@ else
 fi
 
 echo "Calling ProbABEL..."
-/media/local-disk2/jjuod/probabel/HARVEST_GWAS_main/bin/pacoxphVCF \
+pacoxphVCF \
 	-d ${4}/tempfile_${6}.vcf \
 	-i ${4}/tempfile_${6}.mlinfo \
 	-p $2 \
