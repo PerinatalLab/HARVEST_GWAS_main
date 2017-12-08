@@ -6,3 +6,6 @@ scripts for main GWAS of gestational age in HARVEST, 2017
 **Second run with main phenos** - four analyses were run in Aug 2017 using only the main pheno files.
 
 **Third survival run** - all 8 models were re-run in Sep 2017, including 6 PCs and PARITY0 as covariates and different treatment in sensitivity analyses.
+
+
+**Initial linear regression run** - refers to initial version of runs generated Oct 2017 while in Cincinnati (linear, linear >=39 wk, linear <39 wk, logistic at 37 wk cutoff, logistic at 39 wk cutoff).
