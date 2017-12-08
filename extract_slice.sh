@@ -18,6 +18,6 @@ bcftools view moms_${chr}.vcf.gz | \
 	-r ${chr}:${start}-${end} \
 	-q 0.01:minor \
 	bcftools query \
-	-f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' \
+	-f '%CHROM\t%POS\t%REF\t%ALT[\t%DS]\n' \
 	-o ${outfile}
 
