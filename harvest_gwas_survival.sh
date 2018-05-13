@@ -67,4 +67,7 @@ rm ~/Documents/harvest/phenofiles/*Cond*X.pheno
 cp ~/Documents/harvest/phenofiles/*Cond*.pheno ...
 
 # run:
-./run_conditional.sh phenofiles_cond/loci_table.txt 1000000 tmp
+# manually delete one Xchr snp from loci_table.txt > loci_table_nox.txt
+./run_conditional.sh phenofiles_cond/loci_table_nox.txt 1000000 tmp
+# get results:
+./check_conditional.R
